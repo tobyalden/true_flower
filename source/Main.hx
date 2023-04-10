@@ -57,6 +57,9 @@ class Main extends Engine
         if(Key.pressed(Key.ESCAPE)) {
             Sys.exit(0);
         }
+        if(Key.pressed(Key.F)) {
+            HXP.fullscreen = !HXP.fullscreen;
+        }
 #end
         super.update();
     }

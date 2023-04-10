@@ -29,6 +29,7 @@ class Player extends Entity
     private var timeJumpHeld:Float;
     private var dashTimer:Alarm;
     private var canDoubleJump:Bool;
+    private var canceledJump:Bool;
 
     public function new(x:Float, y:Float) {
         super(x, y);
@@ -52,15 +53,22 @@ class Player extends Entity
         });
         addTween(dashTimer);
         canDoubleJump = false;
+        canceledJump = false;
     }
 
     override public function update() {
         if(Input.pressed("dash")) {
             dash();
         }
+        if(dashTimer.active && Input.pressed("jump") && canDoubleJump) {
+            dashTimer.active = false;
+            canceledJump = true;
+        }
         if(!dashTimer.active) {
             movement();
         }
+        canceledJump = false;
+
         moveBy(
             velocity.x * HXP.elapsed,
             velocity.y * HXP.elapsed,
@@ -103,10 +111,10 @@ class Player extends Entity
 
     private function movement() {
         if(Input.check("left") && !isOnLeftWall()) {
-            velocity.x = -SPEED;
+            velocity.x = Math.min(velocity.x, -SPEED);
         }
         else if(Input.check("right") && !isOnRightWall()) {
-            velocity.x = SPEED;
+            velocity.x = Math.max(velocity.x, SPEED);
         }
         else {
             velocity.x = 0;
@@ -138,8 +146,21 @@ class Player extends Entity
             }
         }
         else if(!isOnGround() && canDoubleJump && Input.pressed("jump")) {
-            velocity.y = -DOUBLE_JUMP_POWER;
+            if(canceledJump) {
+                velocity.y = -DOUBLE_JUMP_POWER * 1.33;
+            }
+            else {
+                velocity.y = -DOUBLE_JUMP_POWER;
+            }
             canDoubleJump = false;
+        }
+
+        var decel = 300;
+        if(velocity.x > SPEED) {
+            velocity.x = MathUtil.approach(velocity.x, SPEED, decel * HXP.elapsed);
+        }
+        else if(velocity.x < -SPEED) {
+            velocity.x = MathUtil.approach(velocity.x, -SPEED, decel * HXP.elapsed);
         }
 
         var gravity:Float = GRAVITY;
