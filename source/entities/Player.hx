@@ -14,6 +14,7 @@ class Player extends Entity
     public static inline var SPEED = 90;
     public static inline var GRAVITY = 690;
     public static inline var JUMP_POWER = 200 / 1.5 + 10;
+    public static inline var DOUBLE_JUMP_POWER = JUMP_POWER;
     public static inline var JUMP_CANCEL = 30;
     public static inline var GRAVITY_MODIFIER_AT_PEAK = 0.5;
     public static inline var MAX_FALL_SPEED = 300;
@@ -27,6 +28,7 @@ class Player extends Entity
     private var timeOffGround:Float;
     private var timeJumpHeld:Float;
     private var dashTimer:Alarm;
+    private var canDoubleJump:Bool;
 
     public function new(x:Float, y:Float) {
         super(x, y);
@@ -49,6 +51,7 @@ class Player extends Entity
             velocity.y = Math.max(velocity.y, -JUMP_CANCEL);
         });
         addTween(dashTimer);
+        canDoubleJump = false;
     }
 
     override public function update() {
@@ -118,6 +121,7 @@ class Player extends Entity
 
         if(isOnGround()) {
             velocity.y = 0;
+            canDoubleJump = true;
         }
         else {
             if(Input.released("jump") && velocity.y < -JUMP_CANCEL) {
@@ -132,6 +136,10 @@ class Player extends Entity
             ) {
                 velocity.y = -JUMP_POWER;
             }
+        }
+        else if(!isOnGround() && canDoubleJump && Input.pressed("jump")) {
+            velocity.y = -DOUBLE_JUMP_POWER;
+            canDoubleJump = false;
         }
 
         var gravity:Float = GRAVITY;
