@@ -12,18 +12,21 @@ import scenes.*;
 class Player extends Entity
 {
     public static inline var SPEED = 90;
-    public static inline var GRAVITY = 700;
-    public static inline var JUMP_POWER = 200;
+    public static inline var GRAVITY = 690;
+    public static inline var JUMP_POWER = 200 / 1.5 + 10;
     public static inline var JUMP_CANCEL = 30;
     public static inline var GRAVITY_MODIFIER_AT_PEAK = 0.5;
     public static inline var MAX_FALL_SPEED = 300;
     public static inline var COYOTE_TIME = 1 / 60 * 5;
     public static inline var JUMP_BUFFER_TIME = 1 / 60 * 5;
+    public static inline var DASH_TIME = 1 / 60 * 9;
+    public static inline var DASH_SPEED = 150 * 1.5;
 
     private var sprite:Spritemap;
     private var velocity:Vector2;
     private var timeOffGround:Float;
     private var timeJumpHeld:Float;
+    private var dashTimer:Alarm;
 
     public function new(x:Float, y:Float) {
         super(x, y);
@@ -40,10 +43,26 @@ class Player extends Entity
         velocity = new Vector2();
         timeOffGround = 0;
         timeJumpHeld = 0;
+        dashTimer = new Alarm(DASH_TIME);
+        dashTimer.onComplete.bind(function() {
+            velocity.x = 0;
+            velocity.y = Math.max(velocity.y, -JUMP_CANCEL);
+        });
+        addTween(dashTimer);
     }
 
     override public function update() {
-        movement();
+        if(Input.pressed("dash")) {
+            dash();
+        }
+        if(!dashTimer.active) {
+            movement();
+        }
+        moveBy(
+            velocity.x * HXP.elapsed,
+            velocity.y * HXP.elapsed,
+            ["walls"]
+        );
         animation();
         super.update();
         if(Input.check("jump")) {
@@ -52,6 +71,31 @@ class Player extends Entity
         else {
             timeJumpHeld = 0;
         }
+    }
+
+    private function dash() {
+        dashTimer.start();
+        var heading = new Vector2();
+        if(Input.check("left")) {
+            heading.x = -1;
+        }
+        else if(Input.check("right")) {
+            heading.x = 1;
+        }
+
+        if(Input.check("up")) {
+            heading.y = -1;
+        }
+        else if(Input.check("down")) {
+            heading.y = 1;
+        }
+
+        if(heading.length == 0) {
+            heading.x = sprite.flipX ? -1 : 1;
+        }
+
+        velocity = heading;
+        velocity.normalize(DASH_SPEED);
     }
 
     private function movement() {
@@ -97,12 +141,6 @@ class Player extends Entity
         velocity.y += gravity * HXP.elapsed;
 
         velocity.y = Math.min(velocity.y, MAX_FALL_SPEED);
-
-        moveBy(
-            velocity.x * HXP.elapsed,
-            velocity.y * HXP.elapsed,
-            ["walls"]
-        );
     }
 
     override public function moveCollideX(e:Entity) {
@@ -132,6 +170,7 @@ class Player extends Entity
     }
 
     private function animation() {
+        sprite.color = dashTimer.active ? 0xFF000 : 0xFFFFFF;
         if(!isOnGround()) {
             sprite.play("jump");
             sprite.flipX = velocity.x < 0;
